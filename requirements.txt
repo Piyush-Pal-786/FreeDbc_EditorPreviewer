@@ -1,0 +1,7 @@
+# Runtime dependencies
+customtkinter>=5.2.0
+cantools>=39.0.0
+openpyxl>=3.1.2
+
+# Packaging (optional — only needed when building an executable)
+# pyinstaller>=6.0.0

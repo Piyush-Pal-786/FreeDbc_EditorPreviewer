@@ -1,0 +1,72 @@
+VERSION ""
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+
+BS_:
+
+BU_:
+
+BO_ 100 EngineData: 8 Vector__XXX
+ SG_ EngineSpeed    : 0|16@1+  (0.25,0)   [0|16383.75]  "rpm"   Vector__XXX
+ SG_ EngineTemp     : 16|8@1+  (0.5,-40)  [-40|87.5]    "degC"  Vector__XXX
+ SG_ ThrottlePos    : 24|8@1+  (0.4,0)    [0|100]       "%"     Vector__XXX
+ SG_ EngineRunning  : 32|1@1+  (1,0)      [0|1]         ""      Vector__XXX
+
+BO_ 200 VehicleSpeed: 4 Vector__XXX
+ SG_ Speed      : 0|16@1+  (0.01,0)  [0|655.35]  "km/h"  Vector__XXX
+ SG_ Odometer   : 16|16@1+ (0.1,0)   [0|6553.5]  "km"    Vector__XXX
+
+BO_ 300 BrakeData: 2 Vector__XXX
+ SG_ BrakePressure : 0|8@1+  (1,0)  [0|255]  "bar"  Vector__XXX
+ SG_ BrakeActive   : 8|1@1+  (1,0)  [0|1]    ""     Vector__XXX
+
+BO_ 400 ClimateControl: 4 Vector__XXX
+ SG_ SetpointTemp   : 0|8@1+   (0.5,15)   [15|30]    "degC"  Vector__XXX
+ SG_ FanSpeed       : 8|4@1+   (1,0)      [0|10]     ""      Vector__XXX
+ SG_ ACEnabled      : 12|1@1+  (1,0)      [0|1]      ""      Vector__XXX
+ SG_ RecircMode     : 13|1@1+  (1,0)      [0|1]      ""      Vector__XXX
+
+BO_ 500 GearboxStatus: 2 Vector__XXX
+ SG_ CurrentGear    : 0|4@1+   (1,0)   [0|8]    ""     Vector__XXX
+ SG_ GearboxMode    : 4|2@1+   (1,0)   [0|3]    ""     Vector__XXX
+ SG_ GearboxTemp    : 8|8@1+   (1,-40) [-40|215] "degC" Vector__XXX
+
+CM_ BO_ 100 "Engine status and performance data";
+CM_ SG_ 100 EngineSpeed   "Engine rotational speed in RPM";
+CM_ SG_ 100 EngineTemp    "Engine coolant temperature";
+CM_ SG_ 100 ThrottlePos   "Throttle pedal position in percent";
+CM_ SG_ 100 EngineRunning "Engine on/off status flag";
+
+CM_ BO_ 200 "Vehicle speed and distance data";
+CM_ SG_ 200 Speed    "Current vehicle speed";
+CM_ SG_ 200 Odometer "Total distance travelled";
+
+CM_ BO_ 300 "Brake system pressure and activity";
+CM_ SG_ 300 BrakePressure "Hydraulic brake pressure";
+CM_ SG_ 300 BrakeActive   "Brake pedal engaged flag";
+
+CM_ BO_ 400 "Cabin climate control settings";
+CM_ SG_ 400 SetpointTemp "Desired cabin temperature";
+CM_ SG_ 400 FanSpeed     "Fan speed level (0=off, 10=max)";
+CM_ SG_ 400 ACEnabled    "Air conditioning compressor active";
+CM_ SG_ 400 RecircMode   "Recirculation mode active";
+
+CM_ BO_ 500 "Automatic gearbox status";
+CM_ SG_ 500 CurrentGear "Currently engaged gear (0=N, 1-7=gears, 8=R)";
+CM_ SG_ 500 GearboxMode "Gearbox operating mode";
+CM_ SG_ 500 GearboxTemp "Gearbox oil temperature";
+
+VAL_ 100 EngineRunning  0 "OFF"        1 "ON" ;
+VAL_ 300 BrakeActive    0 "NOT_ACTIVE" 1 "ACTIVE" ;
+VAL_ 400 ACEnabled      0 "OFF"        1 "ON" ;
+VAL_ 400 RecircMode     0 "FRESH_AIR"  1 "RECIRCULATE" ;
+VAL_ 500 GearboxMode    0 "PARK" 1 "REVERSE" 2 "NEUTRAL" 3 "DRIVE" ;
+VAL_ 500 CurrentGear    0 "N" 1 "1st" 2 "2nd" 3 "3rd" 4 "4th" 5 "5th" 6 "6th" 7 "7th" 8 "R" ;

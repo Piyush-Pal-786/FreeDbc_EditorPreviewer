@@ -39,6 +39,7 @@ nosetests.xml
 .idea/
 *.sublime-project
 *.sublime-workspace
+app_ideas/
 
 # Environment and secret files
 .env

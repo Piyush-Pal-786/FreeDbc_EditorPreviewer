@@ -1,6 +1,6 @@
 # FreeDBC Editor & Previewer
 
-> A **cross-platform, portable, open-source** DBC (CAN Database) file viewer  
+> A **cross-platform, portable, open-source** DBC (CAN Database) file viewer
 > and editor with Excel/CSV export — built with Python + CustomTkinter.
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python)
@@ -22,21 +22,17 @@
 | 🔍 **Search** | Filter messages by name or ID instantly |
 | ⌨️ **Shortcuts** | `Ctrl+O` Import · `Ctrl+S` Save · `Ctrl+E` Excel |
 
+*New features coming soon — stay tuned for exciting updates!*
 ---
 
 ## 🖥️ Screenshot
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  🔌 FreeDBC  Editor & Previewer   [Import] [Save] [Excel] [CSV] [?] │
-├────────────────────┬─────────────────────────────────────────────────┤
-│  📋 Messages       │  ⚡ Signals — EngineData          [✏️ Edit]    │
-│  ─────────────     │  ──────────────────────────────────────────────│
-│  0x064 EngineData  │  EngineSpeed  | 0 | 16 | LE | 0.25 | …        │
-│  0x0C8 VehicleSpd  │  EngineTemp   | 16| 8  | LE | 0.5  | …        │
-│  0x12C BrakeData   │  ThrottlePos  | 24| 8  | LE | 0.4  | …        │
-└────────────────────┴─────────────────────────────────────────────────┘
-```
+**Free DBC Editor/Previewer:**\
+![alt text](res/freeDBC_editor.png)
+
+**Signal Edit Dailog:**\
+![alt text](res/signal_edit_dialog.png)
+
 
 ---
 
@@ -82,7 +78,7 @@ The output is a **single self-contained file** in `dist/`:
 | macOS   | `dist/FreeDBC_EditorPreviewer` |
 | Linux   | `dist/FreeDBC_EditorPreviewer` |
 
-> **Tip:** GitHub Actions (`.github/workflows/build.yml`) builds all three  
+> **Tip:** GitHub Actions (`.github/workflows/build.yml`) builds all three
 > automatically on every tagged release.
 
 ---

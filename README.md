@@ -23,6 +23,7 @@
 | ⌨️ **Shortcuts** | `Ctrl+O` Import · `Ctrl+S` Save · `Ctrl+E` Excel |
 
 *New features coming soon — stay tuned for exciting updates!*
+
 ---
 
 ## 🖥️ Screenshot

@@ -667,5 +667,5 @@ ABOUT DBC FILES
 
 ──────────────────────────────────────────────────
   Open-Source · MIT License
-  https://github.com/your-org/FreeDbc_EditorPreviewer
+  https://github.com/Piyush-Pal-786/FreeDbc_EditorPreviewer
 """

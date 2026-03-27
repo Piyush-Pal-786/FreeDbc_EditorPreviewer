@@ -19,7 +19,7 @@ a = Analysis(
         ('sample_dbc', 'sample_dbc'),
         # Include CustomTkinter's theme data so the UI renders correctly
         (
-            'venv/Lib/site-packages/customtkinter',
+            '.venv/Lib/site-packages/customtkinter',
             'customtkinter'
         ),
     ],

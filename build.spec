@@ -9,6 +9,22 @@ Usage (from project root):
 Output: dist/FreeDBC_EditorPreviewer   (or .exe on Windows)
 """
 
+# Resolve the customtkinter package location dynamically at spec-evaluation time.
+#
+# Why: A hardcoded relative path like '.venv/Lib/site-packages/customtkinter'
+# only exists in a local Windows virtual-environment.  On GitHub Actions runners
+# (Windows, macOS, Linux) packages are installed directly into the system/hosted
+# Python, so that path does not exist and PyInstaller aborts with:
+#   "Unable to find '...venv/Lib/site-packages/customtkinter'"
+#
+# importlib.util.find_spec() asks Python's own import machinery where it would
+# load the package from — this is always correct regardless of whether packages
+# live in a venv, a conda env, a system install, or a CI-hosted toolcache.
+import importlib.util as _ilu
+
+_ctk_spec = _ilu.find_spec("customtkinter")
+_ctk_path = str(_ctk_spec.submodule_search_locations[0])
+
 block_cipher = None
 
 a = Analysis(
@@ -17,11 +33,9 @@ a = Analysis(
     binaries=[],
     datas=[
         ('sample_dbc', 'sample_dbc'),
-        # Include CustomTkinter's theme data so the UI renders correctly
-        (
-            '.venv/Lib/site-packages/customtkinter',
-            'customtkinter'
-        ),
+        # Bundle CustomTkinter's theme/asset data so the UI renders correctly.
+        # _ctk_path is resolved dynamically above — works on any OS / env type.
+        (_ctk_path, 'customtkinter'),
     ],
     hiddenimports=[
         'customtkinter',

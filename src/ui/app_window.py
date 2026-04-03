@@ -46,28 +46,56 @@ _GREEN_H = "#38963a"
 _GREY = "#555555"
 _GREY_H = "#666666"
 
+# Light-mode equivalents for plain tk.Frame / tk.PanedWindow backgrounds.
+# These widgets do NOT react to CTk's set_appearance_mode() automatically,
+# so we store both variants and swap them manually inside _toggle_theme().
+_LIGHT_BG = "#f5f5f5"
+_LIGHT_PANEL_BG = "#e8e8e8"
 
-def _apply_tree_style() -> None:
-    """Configure ttk.Treeview to match the dark CTk theme."""
+
+def _apply_tree_style(dark: bool = True) -> None:
+    """Configure ttk.Treeview to match the current CTk theme.
+
+    Why: ttk.Treeview is a standard Tkinter widget — it does NOT react to
+    customtkinter's appearance-mode changes automatically.  We must re-apply
+    colours manually each time the theme is toggled, passing ``dark=True``
+    for dark mode and ``dark=False`` for light mode.
+    """
     style = ttk.Style()
     try:
         style.theme_use("clam")
     except tk.TclError:
         pass
 
+    # Choose the full colour palette based on the requested mode
+    if dark:
+        bg = _PANEL_BG  # "#2b2b2b"
+        fg = "#ffffff"
+        hdr_bg = "#1a1a1a"
+        hdr_fg = "#cccccc"
+        act_hdr = "#333333"
+        scrl_bg = _PANEL_BG
+    else:
+        bg = _LIGHT_PANEL_BG  # "#e8e8e8"
+        fg = "#1a1a1a"
+        hdr_bg = "#d0d0d0"
+        hdr_fg = "#333333"
+        act_hdr = "#bbbbbb"
+        scrl_bg = _LIGHT_PANEL_BG
+
     style.configure(
         "Treeview",
-        background=_PANEL_BG,
-        foreground="#ffffff",
-        fieldbackground=_PANEL_BG,
+        background=bg,
+        foreground=fg,
+        fieldbackground=bg,
         rowheight=26,
         borderwidth=0,
         font=("Segoe UI", 10),
     )
     style.configure(
         "Treeview.Heading",
-        background="#1a1a1a",
-        foreground="#cccccc",
+        background=hdr_bg,
+        foreground=hdr_fg,
         relief="flat",
         font=("Segoe UI", 10, "bold"),
     )
@@ -78,10 +106,10 @@ def _apply_tree_style() -> None:
     )
     style.map(
         "Treeview.Heading",
-        background=[("active", "#333333")],
+        background=[("active", act_hdr)],
     )
-    style.configure("Vertical.TScrollbar", background=_PANEL_BG)
-    style.configure("Horizontal.TScrollbar", background=_PANEL_BG)
+    style.configure("Vertical.TScrollbar", background=scrl_bg)
+    style.configure("Horizontal.TScrollbar", background=scrl_bg)
 
 
 # ---------------------------------------------------------------------------
@@ -101,8 +129,11 @@ class AppWindow:
         self.parser = DBCParser()
         self.current_message = None
         self._modified = False
+        # Tracks the active theme: True = dark (default), False = light.
+        # Always kept in sync with ctk.set_appearance_mode() calls in _toggle_theme().
+        self._is_dark: bool = True
 
-        _apply_tree_style()
+        _apply_tree_style(dark=True)  # apply initial dark styling to ttk.Treeview
         self._build_ui()
         self._bind_shortcuts()
 
@@ -121,7 +152,11 @@ class AppWindow:
     # ---- Toolbar ---------------------------------------------------------
 
     def _build_toolbar(self) -> None:
-        bar = ctk.CTkFrame(self.root, height=58, corner_radius=0, fg_color="#16213e")
+        # fg_color tuple: (light_color, dark_color) — CTk automatically selects
+        # the correct value whenever set_appearance_mode() is called at runtime.
+        bar = ctk.CTkFrame(
+            self.root, height=58, corner_radius=0, fg_color=("#dce3ed", "#16213e")
+        )
         bar.grid(row=0, column=0, sticky="ew")
         bar.grid_propagate(False)
 
@@ -137,11 +172,12 @@ class AppWindow:
             bar,
             text="Editor & Previewer",
             font=ctk.CTkFont(size=13),
-            text_color="#8899bb",
+            # Slightly darker in light mode so the subtitle stays readable
+            text_color=("#445577", "#8899bb"),
         ).pack(side="left", padx=(6, 18), pady=10)
 
-        # Divider
-        ctk.CTkFrame(bar, width=2, height=34, fg_color="#334466").pack(
+        # Divider — tuple keeps it visible in both light and dark modes
+        ctk.CTkFrame(bar, width=2, height=34, fg_color=("#bbccdd", "#334466")).pack(
             side="left", padx=6, pady=12
         )
 
@@ -190,36 +226,73 @@ class AppWindow:
             text="❓  Help",
             command=self.show_help,
             fg_color="transparent",
-            hover_color="#223366",
+            hover_color=("#c8d4e8", "#223366"),  # tuple for light/dark hover tint
             width=80,
             height=34,
         ).pack(side="right", padx=12, pady=12)
 
+        # Theme toggle button — always shows what clicking WILL DO (the opposite mode).
+        # In dark mode it reads "☀️ Light Mode"; in light mode it reads "🌙 Dark Mode".
+        # Stored as self._theme_btn so _toggle_theme() can update its label on every press.
+        #
+        # Why fg_color tuple instead of "transparent":
+        #   A transparent button has NO background fill, so in light mode it becomes
+        #   invisible against the light toolbar (#dce3ed).  Giving each mode its own
+        #   solid fill colour ensures the button is always readable and distinct from
+        #   the toolbar regardless of which mode is active.
+        #
+        # Colour rationale:
+        #   light fg  #b8cce0 — slightly deeper than the toolbar (#dce3ed) → visible depth
+        #   dark  fg  #1e3a6e — slightly brighter than the toolbar (#16213e) → visible depth
+        #   border adds an extra outline so the button edge is crisp in both modes
+        self._theme_btn = ctk.CTkButton(
+            bar,
+            text="\u2600\ufe0f  Light Mode",  # dark is active at startup, so offer light
+            command=self._toggle_theme,
+            fg_color=("#b8cce0", "#1e3a6e"),  # solid fill — (light_bg, dark_bg)
+            hover_color=("#9ab8d4", "#264a8e"),  # darker on hover for tactile feedback
+            border_color=("#7a9ccc", "#4a6fa5"),  # crisp outline in both modes
+            text_color=("#0d1f3c", "#c8d8f0"),  # dark text on light, light text on dark
+            border_width=1,
+            width=130,
+            height=34,
+            font=ctk.CTkFont(size=13),
+        )
+        self._theme_btn.pack(side="right", padx=(0, 4), pady=12)
+
     # ---- Content pane ----------------------------------------------------
 
     def _build_content(self) -> None:
-        paned = tk.PanedWindow(
+        # Store the PanedWindow reference so _toggle_theme() can reconfigure its
+        # bg colour — tk.PanedWindow is a plain Tkinter widget that ignores CTk
+        # appearance-mode changes and must therefore be updated manually.
+        self._paned = tk.PanedWindow(
             self.root,
             orient=tk.HORIZONTAL,
             sashwidth=6,
             sashrelief="flat",
             bg=_DARK_BG,
         )
-        paned.grid(row=1, column=0, sticky="nsew", padx=4, pady=4)
+        self._paned.grid(row=1, column=0, sticky="nsew", padx=4, pady=4)
 
-        left = self._build_messages_panel(paned)
-        right = self._build_signals_panel(paned)
+        left = self._build_messages_panel(self._paned)
+        right = self._build_signals_panel(self._paned)
 
-        paned.add(left, minsize=260, width=360)
-        paned.add(right, minsize=480)
+        self._paned.add(left, minsize=260, width=360)
+        self._paned.add(right, minsize=480)
 
     # ---- Messages panel --------------------------------------------------
 
     def _build_messages_panel(self, parent: tk.PanedWindow) -> tk.Frame:
-        frame = tk.Frame(parent, bg=_DARK_BG)
+        # Store the outer tk.Frame so _toggle_theme() can update its bg colour.
+        # tk.Frame is a plain Tkinter widget — it does not auto-adapt to CTk themes.
+        self._msg_frame = tk.Frame(parent, bg=_DARK_BG)
+        frame = self._msg_frame
 
-        # Header
-        hdr = ctk.CTkFrame(frame, height=38, corner_radius=6, fg_color="#162032")
+        # Header — fg_color tuple lets CTk pick the correct shade per mode
+        hdr = ctk.CTkFrame(
+            frame, height=38, corner_radius=6, fg_color=("#d5dde8", "#162032")
+        )
         hdr.pack(fill="x", padx=0, pady=(0, 4))
         hdr.pack_propagate(False)
         ctk.CTkLabel(
@@ -240,8 +313,10 @@ class AppWindow:
             height=30,
         ).pack(fill="x", padx=4, pady=(0, 4))
 
-        # Treeview
-        tv_frame = tk.Frame(frame, bg=_PANEL_BG)
+        # Store this inner frame reference too — its bg colour must also be
+        # swapped manually because it is a plain tk.Frame, not a CTk widget.
+        self._msg_tv_frame = tk.Frame(frame, bg=_PANEL_BG)
+        tv_frame = self._msg_tv_frame
         tv_frame.pack(fill="both", expand=True, padx=4, pady=(0, 4))
 
         self._msg_tree = ttk.Treeview(
@@ -270,10 +345,15 @@ class AppWindow:
     # ---- Signals panel ---------------------------------------------------
 
     def _build_signals_panel(self, parent: tk.PanedWindow) -> tk.Frame:
-        frame = tk.Frame(parent, bg=_DARK_BG)
+        # Store the outer tk.Frame for manual bg updates during theme toggle.
+        # tk.Frame does not respond to CTk appearance-mode changes automatically.
+        self._sig_frame = tk.Frame(parent, bg=_DARK_BG)
+        frame = self._sig_frame
 
-        # Header
-        hdr = ctk.CTkFrame(frame, height=38, corner_radius=6, fg_color="#162032")
+        # Header — fg_color tuple lets CTk pick the correct shade per mode
+        hdr = ctk.CTkFrame(
+            frame, height=38, corner_radius=6, fg_color=("#d5dde8", "#162032")
+        )
         hdr.pack(fill="x", padx=0, pady=(0, 4))
         hdr.pack_propagate(False)
 
@@ -301,8 +381,9 @@ class AppWindow:
         )
         self._edit_sig_btn.pack(side="right", padx=6)
 
-        # Treeview with both scrollbars
-        tv_frame = tk.Frame(frame, bg=_PANEL_BG)
+        # Store inner treeview container for bg colour updates on theme toggle.
+        self._sig_tv_frame = tk.Frame(frame, bg=_PANEL_BG)
+        tv_frame = self._sig_tv_frame
         tv_frame.pack(fill="both", expand=True, padx=4, pady=(0, 4))
         tv_frame.grid_rowconfigure(0, weight=1)
         tv_frame.grid_columnconfigure(0, weight=1)
@@ -358,7 +439,10 @@ class AppWindow:
     # ---- Status bar -------------------------------------------------------
 
     def _build_statusbar(self) -> None:
-        bar = ctk.CTkFrame(self.root, height=26, corner_radius=0, fg_color="#111111")
+        # fg_color tuple so the status bar background adapts in both modes
+        bar = ctk.CTkFrame(
+            self.root, height=26, corner_radius=0, fg_color=("#ebebeb", "#111111")
+        )
         bar.grid(row=2, column=0, sticky="ew")
         bar.grid_propagate(False)
 
@@ -366,7 +450,7 @@ class AppWindow:
             bar,
             text="Ready — import a DBC file to begin.",
             font=ctk.CTkFont(size=11),
-            text_color="#888888",
+            text_color=("#555555", "#888888"),  # darker in light mode for legibility
         )
         self._status_lbl.pack(side="left", padx=10)
 
@@ -374,7 +458,7 @@ class AppWindow:
             bar,
             text="",
             font=ctk.CTkFont(size=11),
-            text_color="#555555",
+            text_color=("#444444", "#555555"),  # adapts contrast for both modes
         )
         self._file_lbl.pack(side="right", padx=10)
 
@@ -386,6 +470,66 @@ class AppWindow:
         self.root.bind("<Control-o>", lambda _: self.import_dbc())
         self.root.bind("<Control-s>", lambda _: self.save_dbc())
         self.root.bind("<Control-e>", lambda _: self.export_xlsx())
+
+    # ------------------------------------------------------------------
+    # Theme
+    # ------------------------------------------------------------------
+
+    def _toggle_theme(self) -> None:
+        """Toggle between dark and light appearance modes.
+
+        Why: customtkinter supports runtime theme switching via
+        ``ctk.set_appearance_mode()``.  CTk widgets that use fg_color / text_color
+        tuples adapt automatically; plain tk widgets (Frame, PanedWindow) and
+        ttk.Treeview styles must be updated manually, which we do here.
+        """
+        self._is_dark = not self._is_dark
+
+        # Apply the new global CTk appearance mode.
+        # All CTk widgets re-render themselves immediately after this call.
+        ctk.set_appearance_mode("dark" if self._is_dark else "light")
+
+        # Update the button label AND its text colour explicitly after every toggle.
+        # Why reconfigure text_color here even though a tuple was set at creation?
+        # CTk re-evaluates tuples on mode change for most properties, but calling
+        # configure() with the same tuple forces an immediate redraw so the button
+        # never appears stale between the set_appearance_mode() call and the next
+        # paint cycle.
+        if self._is_dark:
+            # Now in dark mode — button offers "switch to light"
+            self._theme_btn.configure(
+                text="\u2600\ufe0f  Light Mode",
+                fg_color=("#b8cce0", "#1e3a6e"),
+                hover_color=("#9ab8d4", "#264a8e"),
+                border_color=("#7a9ccc", "#4a6fa5"),
+                text_color=("#0d1f3c", "#c8d8f0"),
+            )
+        else:
+            # Now in light mode — button offers "switch to dark"
+            self._theme_btn.configure(
+                text="\U0001f319  Dark Mode",
+                fg_color=("#b8cce0", "#1e3a6e"),
+                hover_color=("#9ab8d4", "#264a8e"),
+                border_color=("#7a9ccc", "#4a6fa5"),
+                text_color=("#0d1f3c", "#c8d8f0"),
+            )
+
+        # Re-style ttk.Treeview — it does NOT auto-respond to CTk mode changes.
+        # We must call _apply_tree_style() again with the updated flag.
+        _apply_tree_style(dark=self._is_dark)
+
+        # Update plain tk.Frame and tk.PanedWindow backgrounds manually.
+        # These are standard Tkinter widgets with no knowledge of CTk themes;
+        # without this step their background colours would remain stuck on
+        # the colour they were given at widget-creation time.
+        bg = _DARK_BG if self._is_dark else _LIGHT_BG
+        panel_bg = _PANEL_BG if self._is_dark else _LIGHT_PANEL_BG
+
+        self._paned.configure(bg=bg)
+        self._msg_frame.configure(bg=bg)
+        self._sig_frame.configure(bg=bg)
+        self._msg_tv_frame.configure(bg=panel_bg)
+        self._sig_tv_frame.configure(bg=panel_bg)
 
     # ------------------------------------------------------------------
     # Actions

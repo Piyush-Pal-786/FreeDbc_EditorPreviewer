@@ -76,8 +76,10 @@ class EditSignalDialog:
         # Section: read-only info
         row_start = len(editable) + 2
         self._section(scroll, "🔒  Read-only Properties", row=row_start)
+        # fg_color tuple: (light, dark) — gives a distinct sunken background for
+        # the read-only section so users can visually separate locked from editable fields
         ro_frame = ctk.CTkFrame(
-            scroll, fg_color=("#1a1a1a", "#1a1a1a"), corner_radius=6
+            scroll, fg_color=("#e0e0e0", "#1a1a1a"), corner_radius=6
         )
         ro_frame.grid(
             row=row_start + 1, column=0, columnspan=2, sticky="ew", pady=4, padx=2
@@ -92,8 +94,13 @@ class EditSignalDialog:
         for label, value in ro_items:
             row_f = ctk.CTkFrame(ro_frame, fg_color="transparent")
             row_f.pack(fill="x", padx=12, pady=3)
+            # text_color tuple: muted in dark mode, slightly darker-muted in light mode
             ctk.CTkLabel(
-                row_f, text=f"{label}:", width=100, anchor="w", text_color="#aaaaaa"
+                row_f,
+                text=f"{label}:",
+                width=100,
+                anchor="w",
+                text_color=("#666666", "#aaaaaa"),
             ).pack(side="left")
             ctk.CTkLabel(row_f, text=value, anchor="w").pack(side="left")
 
@@ -101,8 +108,9 @@ class EditSignalDialog:
         if sig.choices:
             row_val = row_start + 3
             self._section(scroll, "📋  Value Descriptions", row=row_val)
+            # fg_color tuple so the value-descriptions block looks distinct in both modes
             val_frame = ctk.CTkFrame(
-                scroll, fg_color=("#1a1a1a", "#1a1a1a"), corner_radius=6
+                scroll, fg_color=("#e0e0e0", "#1a1a1a"), corner_radius=6
             )
             val_frame.grid(
                 row=row_val + 1, column=0, columnspan=2, sticky="ew", pady=4, padx=2
@@ -113,8 +121,13 @@ class EditSignalDialog:
                 ctk.CTkLabel(
                     row_f, text=f"{k}", width=60, anchor="e", text_color="#4a9eff"
                 ).pack(side="left")
+                # Separator arrow — text_color tuple keeps it visible in both modes
                 ctk.CTkLabel(
-                    row_f, text="→", width=30, anchor="center", text_color="#666666"
+                    row_f,
+                    text="→",
+                    width=30,
+                    anchor="center",
+                    text_color=("#999999", "#666666"),
                 ).pack(side="left")
                 ctk.CTkLabel(row_f, text=v, anchor="w").pack(side="left")
 
@@ -239,13 +252,14 @@ class EditMessageDialog:
                 row=i, column=1, sticky="ew", pady=8
             )
 
-        # Read-only info box
-        info = ctk.CTkFrame(main, fg_color=("#1a1a1a", "#1a1a1a"), corner_radius=6)
+        # Read-only info box — fg_color tuple gives a distinct background per mode
+        info = ctk.CTkFrame(main, fg_color=("#e0e0e0", "#1a1a1a"), corner_radius=6)
         info.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(8, 4))
         ctk.CTkLabel(
             info,
             text=f"  ID: 0x{msg.id:03X}  ({msg.id} dec)       DLC: {msg.length} bytes",
-            text_color="#aaaaaa",
+            # text_color tuple: muted grey that reads clearly on both backgrounds
+            text_color=("#666666", "#aaaaaa"),
         ).pack(anchor="w", padx=12, pady=8)
 
         # Buttons

@@ -129,14 +129,14 @@ class AppWindow:
         self.parser = DBCParser()
         self.current_message = None
         self._modified = False
-        # Tracks the active theme: True = dark (default), False = light.
+        # Tracks the active theme: True = dark, False = light (default).
         # Always kept in sync with ctk.set_appearance_mode() calls in _toggle_theme().
-        self._is_dark: bool = True
+        self._is_dark: bool = False
         # Search mode: "msg" = message names/IDs only, "sig" = signal names only,
         # "all" = both.  Kept in sync with the segmented button in _build_search_bar.
         self._search_mode_val: str = "all"
 
-        _apply_tree_style(dark=True)  # apply initial dark styling to ttk.Treeview
+        _apply_tree_style(dark=False)  # apply initial light styling to ttk.Treeview
         self._build_ui()
         self._bind_shortcuts()
 
@@ -329,7 +329,7 @@ class AppWindow:
             orient=tk.HORIZONTAL,
             sashwidth=6,
             sashrelief="flat",
-            bg=_DARK_BG,
+            bg=_LIGHT_BG,
         )
         self._paned.grid(row=2, column=0, sticky="nsew", padx=4, pady=4)
 
@@ -344,7 +344,7 @@ class AppWindow:
     def _build_messages_panel(self, parent: tk.PanedWindow) -> tk.Frame:
         # Store the outer tk.Frame so _toggle_theme() can update its bg colour.
         # tk.Frame is a plain Tkinter widget — it does not auto-adapt to CTk themes.
-        self._msg_frame = tk.Frame(parent, bg=_DARK_BG)
+        self._msg_frame = tk.Frame(parent, bg=_LIGHT_BG)
         frame = self._msg_frame
 
         # Header — fg_color tuple lets CTk pick the correct shade per mode
@@ -363,7 +363,7 @@ class AppWindow:
 
         # Store this inner frame reference too — its bg colour must also be
         # swapped manually because it is a plain tk.Frame, not a CTk widget.
-        self._msg_tv_frame = tk.Frame(frame, bg=_PANEL_BG)
+        self._msg_tv_frame = tk.Frame(frame, bg=_LIGHT_PANEL_BG)
         tv_frame = self._msg_tv_frame
         tv_frame.pack(fill="both", expand=True, padx=4, pady=(0, 4))
 
@@ -395,7 +395,7 @@ class AppWindow:
     def _build_signals_panel(self, parent: tk.PanedWindow) -> tk.Frame:
         # Store the outer tk.Frame for manual bg updates during theme toggle.
         # tk.Frame does not respond to CTk appearance-mode changes automatically.
-        self._sig_frame = tk.Frame(parent, bg=_DARK_BG)
+        self._sig_frame = tk.Frame(parent, bg=_LIGHT_BG)
         frame = self._sig_frame
 
         # Header — fg_color tuple lets CTk pick the correct shade per mode
@@ -430,7 +430,7 @@ class AppWindow:
         self._edit_sig_btn.pack(side="right", padx=6)
 
         # Store inner treeview container for bg colour updates on theme toggle.
-        self._sig_tv_frame = tk.Frame(frame, bg=_PANEL_BG)
+        self._sig_tv_frame = tk.Frame(frame, bg=_LIGHT_PANEL_BG)
         tv_frame = self._sig_tv_frame
         tv_frame.pack(fill="both", expand=True, padx=4, pady=(0, 4))
         tv_frame.grid_rowconfigure(0, weight=1)

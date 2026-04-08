@@ -132,6 +132,9 @@ class AppWindow:
         # Tracks the active theme: True = dark (default), False = light.
         # Always kept in sync with ctk.set_appearance_mode() calls in _toggle_theme().
         self._is_dark: bool = True
+        # Search mode: "msg" = message names/IDs only, "sig" = signal names only,
+        # "all" = both.  Kept in sync with the segmented button in _build_search_bar.
+        self._search_mode_val: str = "all"
 
         _apply_tree_style(dark=True)  # apply initial dark styling to ttk.Treeview
         self._build_ui()
@@ -143,11 +146,12 @@ class AppWindow:
 
     def _build_ui(self) -> None:
         self.root.grid_columnconfigure(0, weight=1)
-        self.root.grid_rowconfigure(1, weight=1)
+        self.root.grid_rowconfigure(2, weight=1)  # row 2 = content pane (expands)
 
-        self._build_toolbar()
-        self._build_content()
-        self._build_statusbar()
+        self._build_toolbar()  # row 0
+        self._build_search_bar()  # row 1 — shared search strip
+        self._build_content()  # row 2
+        self._build_statusbar()  # row 3
 
     # ---- Toolbar ---------------------------------------------------------
 
@@ -260,6 +264,60 @@ class AppWindow:
         )
         self._theme_btn.pack(side="right", padx=(0, 4), pady=12)
 
+    # ---- Shared search bar (row 1) ---------------------------------------
+
+    def _build_search_bar(self) -> None:
+        """A full-width search strip that filters both panels.  Placed between
+        the toolbar (row 0) and the content pane (row 2) so it is visually
+        independent of—and shared by—the Messages and Signals panels."""
+        bar = ctk.CTkFrame(
+            self.root,
+            height=62,
+            corner_radius=0,
+            fg_color=("#dce3ed", "#1a2030"),
+        )
+        bar.grid(row=1, column=0, sticky="ew")
+        bar.grid_propagate(False)
+
+        # Label
+        ctk.CTkLabel(
+            bar,
+            text="🔍  Search:",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=("#445577", "#8899bb"),
+        ).pack(side="left", padx=(14, 6), pady=0)
+
+        # Search entry — fills the available width between label and mode button
+        self._search_var = tk.StringVar()
+        self._search_var.trace_add("write", self._filter_messages)
+        self._search_entry = ctk.CTkEntry(
+            bar,
+            textvariable=self._search_var,
+            placeholder_text="🔍  Search messages & signals…",
+            height=32,
+            font=ctk.CTkFont(size=12),
+        )
+        self._search_entry.pack(
+            side="left", fill="x", expand=True, padx=(0, 10), pady=0
+        )
+
+        # Mode selector
+        self._mode_seg = ctk.CTkSegmentedButton(
+            bar,
+            values=["📋 Messages", "⚡ Signals", "🔍 All"],
+            command=self._on_search_mode_change,
+            height=32,
+            font=ctk.CTkFont(size=11),
+            fg_color=("#d0d8e4", "#1a2438"),
+            selected_color=("#1f6aa5", "#1f6aa5"),
+            selected_hover_color=("#2878c4", "#2878c4"),
+            unselected_color=("#d0d8e4", "#1a2438"),
+            unselected_hover_color=("#bbc8d8", "#263050"),
+            text_color=("#1a1a1a", "#cccccc"),
+        )
+        self._mode_seg.set("🔍 All")  # default: search everything
+        self._mode_seg.pack(side="left", padx=(0, 14), pady=0)
+
     # ---- Content pane ----------------------------------------------------
 
     def _build_content(self) -> None:
@@ -273,7 +331,7 @@ class AppWindow:
             sashrelief="flat",
             bg=_DARK_BG,
         )
-        self._paned.grid(row=1, column=0, sticky="nsew", padx=4, pady=4)
+        self._paned.grid(row=2, column=0, sticky="nsew", padx=4, pady=4)
 
         left = self._build_messages_panel(self._paned)
         right = self._build_signals_panel(self._paned)
@@ -302,16 +360,6 @@ class AppWindow:
             hdr, text="", text_color="#666666", font=ctk.CTkFont(size=11)
         )
         self._msg_count_lbl.pack(side="right", padx=10)
-
-        # Search bar
-        self._search_var = tk.StringVar()
-        self._search_var.trace_add("write", self._filter_messages)
-        ctk.CTkEntry(
-            frame,
-            textvariable=self._search_var,
-            placeholder_text="🔍  Search messages…",
-            height=30,
-        ).pack(fill="x", padx=4, pady=(0, 4))
 
         # Store this inner frame reference too — its bg colour must also be
         # swapped manually because it is a plain tk.Frame, not a CTk widget.
@@ -443,7 +491,7 @@ class AppWindow:
         bar = ctk.CTkFrame(
             self.root, height=26, corner_radius=0, fg_color=("#ebebeb", "#111111")
         )
-        bar.grid(row=2, column=0, sticky="ew")
+        bar.grid(row=3, column=0, sticky="ew")
         bar.grid_propagate(False)
 
         self._status_lbl = ctk.CTkLabel(
@@ -648,9 +696,22 @@ class AppWindow:
             self._msg_tree.delete(item)
 
         count = 0
-        ft = filter_text.lower()
+        ft = filter_text.lower().strip()
+        mode = self._search_mode_val
+
         for msg in self.parser.messages:
-            if ft in msg.name.lower() or ft in f"0x{msg.id:03x}":
+            show = False
+            if not ft:
+                show = True
+            else:
+                if mode in ("msg", "all"):
+                    if ft in msg.name.lower() or ft in f"0x{msg.id:03x}":
+                        show = True
+                if not show and mode in ("sig", "all"):
+                    if any(ft in sig.name.lower() for sig in msg.signals):
+                        show = True
+
+            if show:
                 self._msg_tree.insert(
                     "",
                     "end",
@@ -700,6 +761,35 @@ class AppWindow:
         if self.parser.messages:
             self._populate_messages(self._search_var.get())
 
+    def _on_search_mode_change(self, value: str) -> None:
+        """Called when the user clicks one of the mode segments."""
+        _map = {"📋 Messages": "msg", "⚡ Signals": "sig", "🔍 All": "all"}
+        self._search_mode_val = _map.get(value, "msg")
+        placeholders = {
+            "msg": "🔍  Search messages…",
+            "sig": "🔍  Search signals…",
+            "all": "🔍  Search messages & signals…",
+        }
+        self._search_entry.configure(
+            placeholder_text=placeholders[self._search_mode_val]
+        )
+        if self.parser.messages:
+            self._populate_messages(self._search_var.get())
+
+    def _highlight_matching_signals(self, filter_text: str) -> None:
+        """Select the first signal whose name contains *filter_text* and scroll
+        the signal treeview to make it visible.  Called after a message row is
+        selected in signal / all search mode."""
+        if not self.current_message or not filter_text:
+            return
+        ft = filter_text.lower()
+        for sig in self.current_message.signals:
+            if ft in sig.name.lower():
+                self._sig_tree.selection_set(sig.name)
+                self._sig_tree.see(sig.name)
+                self._edit_sig_btn.configure(state="normal")
+                break
+
     # ------------------------------------------------------------------
     # Event handlers
     # ------------------------------------------------------------------
@@ -713,9 +803,22 @@ class AppWindow:
             if msg.id == msg_id:
                 self.current_message = msg
                 self._populate_signals(msg)
-                self._set_status(
-                    f"Selected: {msg.name}  (0x{msg.id:03X}) — {len(msg.signals)} signals"
-                )
+                ft = self._search_var.get().strip()
+                # In signal/all mode with an active query, jump to the first
+                # matching signal so the user instantly sees what matched.
+                if ft and self._search_mode_val in ("sig", "all"):
+                    self._highlight_matching_signals(ft)
+                    matched = sum(
+                        1 for s in msg.signals if ft.lower() in s.name.lower()
+                    )
+                    self._set_status(
+                        f"Selected: {msg.name}  (0x{msg.id:03X}) — "
+                        f"{matched}/{len(msg.signals)} signal(s) matched"
+                    )
+                else:
+                    self._set_status(
+                        f"Selected: {msg.name}  (0x{msg.id:03X}) — {len(msg.signals)} signals"
+                    )
                 break
 
     def _on_msg_dbl_click(self, _event) -> None:
